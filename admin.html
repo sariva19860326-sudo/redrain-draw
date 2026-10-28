@@ -1,0 +1,165 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>紅包獎池後台</title><style>
+:root{--bg:#f6f6f6;--card:#fff;--tx:#222;--bd:#ddd}@media(prefers-color-scheme:dark){:root{--bg:#161616;--card:#222;--tx:#eee;--bd:#444}}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,"Noto Sans TC","Microsoft JhengHei",sans-serif}main{max-width:880px;margin:0 auto;padding:16px}
+.c{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:14px;overflow-x:auto}h2{font-size:16px;margin:0 0 8px}
+input,button,select,textarea{font:inherit;padding:6px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--bg);color:var(--tx)}table{border-collapse:collapse;width:100%}td,th{padding:4px;border-bottom:1px solid var(--bd);text-align:left}.m{color:#888;font-size:13px}.n{width:70px}pre{white-space:pre-wrap;font-size:13px}
+</style></head><body><main><div class="c"><button id="in">使用 Google 登入</button> <span id="who" class="m"></span></div>
+<div id="app" hidden>
+<div class="c"><h2>① 獎項</h2><table id="pz"></table>
+<div class="m">數量 -1＝不限量。權重＝各獎項在獎位中的相對比例（數量有限的獎項不會超過其數量）。圖片可填檔名（如 p1.png）或完整網址。<b>修改後必須到 ③ 重新產生獎位才會生效。</b></div>
+<p><button id="add">＋新增獎項</button> <button id="seed">載入範例獎項</button></p></div>
+<div class="c"><h2>② 折價券領取連結（中獎後顯示「前往領取」按鈕）</h2>獎項 <select id="lk"></select><br>
+領取連結（優惠券平台的固定連結）<input id="lf" style="width:100%" placeholder="https://…"><p><button id="lsv">儲存連結</button> <button id="lap">套用到已產生的獎位</button></p>
+<div class="m">連結會在「產生獎位」時寫進獎位；之後想換連結，儲存後按「套用到已產生的獎位」。連結只有中獎者看得到。</div></div>
+<div class="c"><h2>③ 獎位（預先排定的抽獎結果）</h2>預估總抽獎人次 <input id="N" type="number" min="1" max="10000" value="3000" style="width:90px"> <button id="pv">預覽配置</button>
+<div id="pvo"></div><p><button id="g1">清空並重新產生</button> <button id="g2">追加一批</button></p><div id="ps" style="font-weight:700"></div>
+<div class="m">系統會依 ① 的數量與權重，事先把每個獎位的結果隨機排好；顧客抽獎＝隨機領走一個獎位，領完為止，大獎被領走就不會再有。人次請抓「預估會抽的人數」，太大會讓大獎在活動後仍留不完；太小會提早送完。「追加一批」會用目前 ① 設定的數量再加一批獎位（不影響已抽出的）。免費額度每日寫入上限 2 萬筆，單次最多產生 1 萬個。</div></div>
+<div class="c"><h2>④ 抽獎限制</h2>每台裝置（手機）每天最多 <input id="dl" class="n" type="number" min="0"> 次 <span class="m">（0＝最多 20 次）</span> <button id="ss">儲存</button></div>
+<div class="c"><h2>⑤ 顧客頁文字</h2>說明文字（抽獎按鈕上方）<textarea id="tx1" style="width:100%;height:60px"></textarea>按鈕文字<input id="tx3" style="width:100%"><p><button id="tsv">儲存文字</button></p></div>
+<div class="c"><h2>⑥ 門市 QR code（每店一組，18 間共用同一個獎池）</h2><table id="stores"></table>
+<p><button id="mk">建立 S01–S18 門市</button> <button id="rs">重新整理統計</button> <button id="pa">列印全部 QR</button> <label><input id="en" type="checkbox"> 全活動開放抽獎</label></p>
+<div class="m">每間店用自己的 QR（網址帶 <code>?s=門市代碼</code>），抽獎紀錄就會記錄店別，獎池仍是同一個。請由店員在顧客結帳滿額時才出示，不要公開張貼。關閉單店「開放」只暫停該店；取消「全活動開放抽獎」會暫停所有門市。</div></div>
+<div class="c"><h2>🧪 測試連結（試玩用，不扣獎位、不留紀錄）</h2>有效 <input id="tth" type="number" min="1" value="72" style="width:70px"> 小時 <button id="tgen">產生測試連結</button>
+<p id="tout" class="m" style="word-break:break-all"></p><div class="m">連結到期自動失效；測試頁可「指定結果」預覽每種中獎畫面。</div></div>
+<div class="c"><h2>抽獎紀錄</h2><button id="rr">重新整理</button><table id="recent"></table><p><button id="dl2">下載全部抽獎紀錄 CSV</button></p></div>
+<div class="c"><h2>🔍 系統自我檢查（上線前務必執行）</h2><button id="st">執行檢查</button> <span class="m">會模擬幾種作弊寫入，確認安全規則有擋住；會暫時寫入、並自動清除測試資料。</span><pre id="sto"></pre></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script type="module">
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import {getFirestore,collection,doc,onSnapshot,addDoc,updateDoc,deleteDoc,setDoc,getDoc,getDocs,query,where,orderBy,limit,writeBatch,serverTimestamp,getCountFromServer} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import {firebaseConfig,STORES} from './firebase-config.js';
+const app=initializeApp(firebaseConfig),au=getAuth(app),db=getFirestore(app),$=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const csv=(n,t)=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+t],{type:'text/csv'}));a.download=n;a.click()};
+const fail=e=>alert('操作失敗（是否已登入管理員帳號？）\n'+(e.code||'')+' '+(e.message||e));
+const dayNum=()=>Math.floor((Date.now()+288e5)/864e5);
+const chunks=async(items,fn)=>{for(let i=0;i<items.length;i+=450){const b=writeBatch(db);items.slice(i,i+450).forEach(x=>fn(b,x));await b.commit()}};
+let P=[],started=0,SD={},lkId='';
+$('#in').onclick=()=>signInWithPopup(au,new GoogleAuthProvider()).catch(fail);
+onAuthStateChanged(au,u=>{$('#who').textContent=u&&!u.isAnonymous?u.email:'';$('#app').hidden=!(u&&!u.isAnonymous);if(u&&!u.isAnonymous)start()});
+function start(){if(started++)return;
+  onSnapshot(collection(db,'prizes'),s=>{P=s.docs.map(d=>({id:d.id,...d.data()}));
+    $('#pz').innerHTML='<tr><th>名稱</th><th>圖片網址/檔名</th><th>數量</th><th>權重</th><th></th></tr>'+P.map(p=>`<tr data-id="${p.id}"><td><input class="nm" value="${esc(p.name)}"></td><td><input class="img" value="${esc(p.img||'')}" placeholder="例: p1.png"></td><td><input class="n q" type="number" value="${p.qty}"></td><td><input class="n w" type="number" step="0.1" min="0" value="${p.w}"></td><td><button class="sv">儲存</button> <button class="rm">刪除</button></td></tr>`).join('');
+    const cur=$('#lk').value;$('#lk').innerHTML=P.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');if(cur)$('#lk').value=cur;if($('#lk').value!==lkId){lkId=$('#lk').value;lkLoad()}},fail);
+  getDoc(doc(db,'settings','main')).then(s=>{if(!s.exists())setDoc(doc(db,'settings','main'),{daily_limit:1});$('#dl').value=s.data()?.daily_limit??1;$('#en').checked=s.data()?.enabled!==false});
+  loadTx();poolStatus();recent();
+  onSnapshot(collection(db,'stores'),sn=>{sn.docs.forEach(d=>SD[d.id]=d.data());
+    $('#stores').innerHTML='<tr><th>門市</th><th>名稱</th><th>開放</th><th>今日／累計</th><th></th></tr>'+sn.docs.map(d=>{const x=d.data();return `<tr data-id="${d.id}"><td>${d.id}</td><td><input class="nm" value="${esc(x.name)}"></td><td><input class="en" type="checkbox" ${x.enabled!==false?'checked':''}></td><td class="tc">…</td><td><button class="sv">儲存</button> <button class="qr">QR</button></td></tr>`}).join('');stats()},fail)}
+// ① 獎項
+$('#pz').onclick=async e=>{const tr=e.target.closest('tr[data-id]');if(!tr)return;const id=tr.dataset.id;
+  try{if(e.target.className==='rm'){if(confirm('確定刪除這個獎項？'))await deleteDoc(doc(db,'prizes',id))}
+  else if(e.target.className==='sv'){await updateDoc(doc(db,'prizes',id),{name:tr.querySelector('.nm').value.trim(),img:tr.querySelector('.img').value.trim(),qty:Math.trunc(+tr.querySelector('.q').value),w:Math.max(0,+tr.querySelector('.w').value||0)});alert('已儲存。要讓新設定生效，請到 ③ 重新產生獎位。')}}catch(x){fail(x)}};
+$('#add').onclick=()=>addDoc(collection(db,'prizes'),{name:'新獎項',img:'',qty:10,w:10}).catch(fail);
+$('#seed').onclick=async()=>{if(!confirm('會新增 4 個範例獎項'))return;for(const [name,qty,w] of [['🏆 大獎：5,000 元購物金',1,1],['🥈 二獎：500 元購物金',10,9],['🥉 三獎：100 元折價券',100,30],['🐾 小獎：寵物零食試吃包',-1,60]])await addDoc(collection(db,'prizes'),{name,img:'',qty,w}).catch(fail)};
+// ② 領取連結
+async function lkLoad(){if(!lkId)return;try{$('#lf').value=(await getDoc(doc(db,'prizeLinks',lkId))).data()?.link||''}catch(e){}}
+$('#lk').onchange=()=>{lkId=$('#lk').value;lkLoad()};
+const urlOk=u=>/^https?:\/\//i.test(u);
+$('#lsv').onclick=()=>{const f=$('#lf').value.trim();if(f&&!urlOk(f))return alert('連結必須以 http:// 或 https:// 開頭');setDoc(doc(db,'prizeLinks',lkId),{link:f}).then(()=>alert('已儲存'),fail)};
+$('#lap').onclick=async()=>{const f=$('#lf').value.trim();if(f&&!urlOk(f))return alert('連結必須以 http:// 或 https:// 開頭');
+  try{const s=await getDocs(query(collection(db,'queue'),where('prize','==',lkId)));await chunks(s.docs,(b,d)=>b.update(d.ref,{link:f}));alert('已更新 '+s.size+' 個獎位')}catch(x){fail(x)}};
+// ③ 獎位
+function alloc(N,prizes){let U=prizes.filter(p=>p.w>0),R=N;const res={};
+  for(;;){const tw=U.reduce((a,p)=>a+p.w,0);if(!U.length||tw<=0)break;const cap=U.filter(p=>p.qty>=0&&R*p.w/tw>=p.qty);if(!cap.length)break;cap.forEach(p=>{res[p.id]=p.qty;R-=p.qty});U=U.filter(p=>!cap.includes(p))}
+  const tw=U.reduce((a,p)=>a+p.w,0);
+  if(tw>0){let used=0;U.forEach(p=>{res[p.id]=Math.floor(R*p.w/tw);used+=res[p.id]});const t=[...U].sort((a,b)=>(b.qty<0)-(a.qty<0)||b.w-a.w)[0];res[t.id]=t.qty<0?res[t.id]+R-used:Math.min(t.qty,res[t.id]+R-used)}
+  return res}
+const NV=()=>Math.max(1,Math.min(10000,Math.trunc(+$('#N').value||0)));
+$('#pv').onclick=()=>{const a=alloc(NV(),P),tot=P.reduce((s,p)=>s+(a[p.id]||0),0);
+  $('#pvo').innerHTML='<table><tr><th>獎項</th><th>獎位數</th><th>中獎機率</th></tr>'+P.map(p=>`<tr><td>${esc(p.name)}</td><td>${a[p.id]||0}</td><td>${tot?((a[p.id]||0)/tot*100).toFixed(2):0}%</td></tr>`).join('')+`</table><div class="m">共 ${tot} 個獎位</div>`};
+async function poolStatus(){try{const C=collection(db,'claims'),m=(await getDoc(doc(db,'meta','pool'))).data(),c=(await getCountFromServer(C)).data().count,t=(await getCountFromServer(query(C,where('day','==',dayNum())))).data().count;
+  $('#ps').textContent=m?`目前獎位 ${m.size} 個，已被抽走 ${c} 個，剩 ${m.size-c} 個（今日已抽 ${t} 次）`:'尚未產生獎位'}catch(e){}}
+async function gen(append){
+  const a=alloc(NV(),P),links={};(await getDocs(collection(db,'prizeLinks'))).forEach(d=>links[d.id]=d.data().link||'');
+  const arr=[];P.forEach(p=>{for(let i=0;i<(a[p.id]||0);i++)arr.push(p)});
+  if(!arr.length)return alert('沒有可產生的獎位，請檢查獎項的數量與權重');
+  if(!confirm(append?`追加 ${arr.length} 個獎位？`:`會清除所有已產生的獎位、抽獎紀錄與裝置次數，重新產生 ${arr.length} 個獎位。確定？`))return;
+  for(let i=arr.length-1;i>0;i--){const j=crypto.getRandomValues(new Uint32Array(1))[0]%(i+1);[arr[i],arr[j]]=[arr[j],arr[i]]}
+  try{let start=0;
+    if(append)start=(await getDoc(doc(db,'meta','pool'))).data()?.size||0;
+    else for(const c of ['claims','deviceDay','queue']){const s=await getDocs(collection(db,c));await chunks(s.docs,(b,d)=>b.delete(d.ref))}
+    await chunks(arr.map((p,i)=>[String(start+i+1),{prize:p.id,name:p.name,img:p.img||'',big:p.qty>0&&p.qty<=10,link:links[p.id]||''}]),(b,[id,v])=>b.set(doc(db,'queue',id),v));
+    await setDoc(doc(db,'meta','pool'),{size:start+arr.length});alert(`已產生 ${arr.length} 個獎位`);poolStatus();recent()}catch(x){fail(x)}}
+$('#g1').onclick=()=>gen(false);$('#g2').onclick=()=>gen(true);
+// ④⑤ 限制與文字
+$('#ss').onclick=()=>setDoc(doc(db,'settings','main'),{daily_limit:Math.min(20,Math.max(0,Math.trunc(+$('#dl').value||0)))},{merge:true}).then(()=>alert('已儲存'),fail);
+const DT={intro:'本頁僅限本次消費滿額的顧客使用。點擊天上掉下來的紅包，時間到揭曉獎項！',btn:'抽紅包'};
+async function loadTx(){try{const t=(await getDoc(doc(db,'settings','texts'))).data()||{};$('#tx1').value=t.intro??DT.intro;$('#tx3').value=t.btn||DT.btn}catch(x){}}
+$('#tsv').onclick=()=>setDoc(doc(db,'settings','texts'),{intro:$('#tx1').value,btn:$('#tx3').value.trim()||DT.btn}).then(()=>alert('已儲存'),fail);
+// ⑥ 門市 QR code 與統計
+const PAGE=new URL('./',location.href).href;
+const qrSvg=u=>{const q=qrcode(0,'M');q.addData(u);q.make();return q.createSvgTag({scalable:true})};
+$('#stores').onclick=async e=>{const tr=e.target.closest('tr[data-id]');if(!tr)return;const id=tr.dataset.id;
+  try{if(e.target.className==='sv'){await updateDoc(doc(db,'stores',id),{name:tr.querySelector('.nm').value.trim(),enabled:tr.querySelector('.en').checked});alert('已儲存')}else if(e.target.className==='qr')printQR([id])}catch(x){fail(x)}};
+$('#mk').onclick=async()=>{if(!confirm('建立 S01–S18（已存在的會被重設名稱）？'))return;try{for(const s of STORES)await setDoc(doc(db,'stores',s),{name:s+' 門市',enabled:true})}catch(x){fail(x)}};
+function printQR(ids){const w=window.open('');if(!w)return alert('請允許彈出視窗');
+  w.document.write(`<title>QR</title><body style="font-family:sans-serif;text-align:center">`+ids.map(id=>{const u=PAGE+'?s='+id;return `<div style="display:inline-block;width:300px;margin:12px;page-break-inside:avoid"><h2 style="margin:4px">百分百寵物 週年慶紅包</h2><h3 style="margin:4px">${esc(SD[id]?.name||id)}</h3>${qrSvg(u)}<div>消費滿額後，掃描 QR code 抽紅包</div><div style="color:#888;font-size:11px;word-break:break-all">${esc(u)}</div></div>`}).join('')+'</body>');w.document.close()}
+$('#pa').onclick=()=>printQR(Object.keys(SD).sort());
+async function stats(){const C=collection(db,'claims'),t=dayNum();
+  for(const s of STORES){const c=document.querySelector(`tr[data-id="${s}"] .tc`);if(!c)continue;
+    try{const [a,b]=await Promise.all([getCountFromServer(query(C,where('store','==',s),where('day','==',t))),getCountFromServer(query(C,where('store','==',s)))]);c.textContent=a.data().count+' ／ '+b.data().count}catch(x){}}}
+$('#rs').onclick=()=>{stats();poolStatus()};
+$('#en').onchange=()=>setDoc(doc(db,'settings','main'),{enabled:$('#en').checked},{merge:true}).then(()=>alert($('#en').checked?'已開放抽獎':'已暫停所有門市的抽獎'),fail);
+// 測試連結
+$('#tgen').onclick=async()=>{const exp=Date.now()+Math.max(1,+$('#tth').value||72)*36e5;
+  const code=Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join(''),links={};
+  try{(await getDocs(collection(db,'prizeLinks'))).forEach(d=>{if(d.data().link)links[d.id]=d.data().link});
+    await setDoc(doc(db,'testLinks',code),{expires:exp,links,created:Date.now()});
+    const url=`${PAGE}?test_code=${code}&test_expired=${Math.floor(exp/1000)}`;
+    $('#tout').innerHTML=`<a href="${url}" target="_blank">${url}</a><br>已複製到剪貼簿，到期：${new Date(exp).toLocaleString('zh-TW')}`;navigator.clipboard&&navigator.clipboard.writeText(url).catch(()=>{})}catch(x){fail(x)}};
+// 紀錄
+async function parseDoc(d){
+  const c=d.data();let qName='';
+  try{if(d.id){const qDoc=await getDoc(doc(db,'queue',d.id));if(qDoc.exists())qName=qDoc.data()?.name||''}}catch(e){}
+  let timeStr='';
+  if(c.ts){
+    if(typeof c.ts.toDate==='function')timeStr=c.ts.toDate().toLocaleString('zh-TW');
+    else if(c.ts.seconds)timeStr=new Date(c.ts.seconds*1000).toLocaleString('zh-TW');
+    else timeStr=new Date(c.ts).toLocaleString('zh-TW');
+  }
+  return {t:timeStr,store:c.store||'',prize:qName||c.prizeName||'已領獎',src:c.src||''};
+}
+async function recent(){try{
+  const snap=await getDocs(query(collection(db,'claims'),orderBy('ts','desc'),limit(20)));
+  const r=await Promise.all(snap.docs.map(parseDoc));
+  $('#recent').innerHTML=r.map(x=>`<tr><td>${x.t}</td><td>${esc(x.store)}</td><td>${esc(x.prize)}</td><td>${esc(x.src)}</td></tr>`).join('')
+}catch(e){}}
+$('#rr').onclick=()=>{recent();poolStatus()};
+$('#dl2').onclick=async()=>{
+  const btn=$('#dl2');
+  try{
+    btn.disabled=true;btn.textContent='資料讀取中，請稍候...';
+    const snap=await getDocs(collection(db,'claims'));
+    if(snap.empty){alert('目前尚無任何抽獎紀錄');btn.disabled=false;btn.textContent='下載全部抽獎紀錄 CSV';return}
+    const results=[];const docs=snap.docs;
+    for(let i=0;i<docs.length;i+=20){
+      const batch=docs.slice(i,i+20);
+      const batchData=await Promise.all(batch.map(parseDoc));
+      results.push(...batchData);
+      await new Promise(r=>setTimeout(r,80));
+    }
+    const csvContent='時間,門市代碼,獎項名稱,來源網址\n'+results.map(x=>`"${x.t}","${x.store}","${x.prize}","${x.src}"`).join('\n');
+    csv(`抽獎紀錄_${new Date().toISOString().slice(0,10)}.csv`,csvContent);
+  }catch(x){fail(x)}
+  finally{btn.disabled=false;btn.textContent='下載全部抽獎紀錄 CSV'}
+};
+// 系統自我檢查：用測試獎位 0／00 與測試手機，驗證規則「該成功的成功、該擋的有擋」
+$('#st').onclick=async()=>{const out=$('#sto');out.textContent='';const log=(ok,t)=>out.textContent+=(ok?'✅ ':'❌ ')+t+'\n';
+  const u=au.currentUser,id=u.uid,day=dayNum(),L=Math.min(20,+$('#dl').value||20),st=STORES[0];
+  const clean=async()=>{for(const [c,k] of [['claims','0'],['claims','00'],['deviceDay',`${id}_${day}_1`],['deviceDay',`${id}_${day-1}_1`],['deviceDay',`other_${day}_1`],['queue','0'],['queue','00']])await deleteDoc(doc(db,c,k)).catch(()=>{})};
+  const cl=(slot,d,k,uid=id)=>{const b=writeBatch(db);b.set(doc(db,'claims',slot),{uid,store:st,day:d,k,src:'selftest',ts:serverTimestamp()});return b};
+  const dd=(b,d,k)=>{b.set(doc(db,'deviceDay',`${id}_${d}_${k}`),{uid:id});return b};
+  const must=async(name,fn,expect)=>{let ok,msg='';try{await fn();ok=expect}catch(e){ok=!expect;if(expect)msg=' → '+(e.code||e.message)}log(ok,name+(expect?'（應成功）':'（應被拒絕）')+msg)};
+  try{await clean();for(const s of ['0','00'])await setDoc(doc(db,'queue',s),{prize:'test',name:'自我檢查',big:false,link:''});
+    await must('正常抽獎',()=>dd(cl('0',day,1),day,1).commit(),true);
+    await must('超過每日次數上限',()=>setDoc(doc(db,'deviceDay',`${id}_${day}_${L+1}`),{uid:id}),false);
+    await must('把次數記到別人的裝置底下',()=>setDoc(doc(db,'deviceDay',`other_${day}_1`),{uid:id}),false);
+    await must('沒記錄次數就想領取',()=>cl('00',day,1).commit(),false);
+    await must('日期造假',()=>dd(cl('00',day-1,1),day-1,1).commit(),false);
+    await must('冒用他人身分',()=>dd(cl('00',day,1,'someone-else'),day,1).commit(),false);
+    log(true,'檢查完成。請另外用無痕視窗＋門市 QR 實際抽一次（驗證顧客端能讀到結果）。')}catch(e){log(false,'檢查中斷：'+(e.code||e.message)+'（請先建立門市、儲存抽獎限制）')}
+  await clean();poolStatus()};
+</script></main></body></html>
